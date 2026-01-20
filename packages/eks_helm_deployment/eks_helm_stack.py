@@ -1,5 +1,6 @@
 from aws_cdk import (
     Stack,
+    Duration,
     aws_ssm as ssm,
     aws_lambda as lambda_,
     aws_eks as eks,
@@ -87,6 +88,8 @@ class EksHelmStack(Stack):
             repository="https://kubernetes.github.io/ingress-nginx",
             namespace="ingress-nginx",
             create_namespace=True,
+            timeout=Duration.minutes(15),
+            wait=True,
             values={
                 "controller": {
                     "replicaCount": self.helm_values_resource.get_att("HelmValues.controller.replicaCount")
