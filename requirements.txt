@@ -1,0 +1,9 @@
+# Production Dependencies (from .projenrc.js)
+aws-cdk-lib>=2.100.0, <3.0.0
+aws-cdk.lambda-layer-kubectl-v28==2.0.0
+boto3==1.34.0
+constructs>=10.0.5, <11.0.0
+
+# Development/Testing Dependencies (from .projenrc.js)
+pytest==8.2.0
+pytest-cov==4.1.0
