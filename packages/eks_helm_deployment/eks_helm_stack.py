@@ -1,6 +1,7 @@
 from aws_cdk import (
     Stack,
     Duration,
+    Size,
     aws_ssm as ssm,
     aws_lambda as lambda_,
     aws_eks as eks,
@@ -63,12 +64,14 @@ class EksHelmStack(Stack):
             version=eks.KubernetesVersion.V1_28,
             default_capacity=0,
             cluster_name="eks-cluster",
-            kubectl_layer=KubectlV28Layer(self, "KubectlLayer")
+            kubectl_layer=KubectlV28Layer(self, "KubectlLayer"),
+            kubectl_lambda_role=None,
+            kubectl_memory=Size.mebibytes(1024)
         )
 
-        self.cluster.add_nodegroup_capacity(
+        self.nodegroup = self.cluster.add_nodegroup_capacity(
             "DefaultCapacity",
-            instance_types=[ec2.InstanceType("t3.micro")],
+            instance_types=[ec2.InstanceType("t3.small")],
             desired_size=2,
             min_size=1,
             max_size=3
@@ -84,19 +87,29 @@ class EksHelmStack(Stack):
         self.ingress_chart = self.cluster.add_helm_chart(
             "IngressNginx",
             chart="ingress-nginx",
-            release="nginx",
+            release=f"nginx-{environment}",
             repository="https://kubernetes.github.io/ingress-nginx",
             namespace="ingress-nginx",
             create_namespace=True,
             timeout=Duration.minutes(15),
-            wait=True,
+            wait=False,
             values={
                 "controller": {
-                    "replicaCount": self.helm_values_resource.get_att("HelmValues.controller.replicaCount")
+                    "replicaCount": self.helm_values_resource.get_att("HelmValues.controller.replicaCount"),
+                    "podLabels": {
+                        "environment": environment,
+                        "deployment-type": "ingress-controller"
+                    },
+                    "ingressClassResource": {
+                        "name": f"nginx-{environment}",
+                        "controllerValue": f"k8s.io/ingress-nginx-{environment}"
+                    },
+                    "ingressClass": f"nginx-{environment}"
                 }
             }
         )
 
         # set dependencies
+        self.ingress_chart.node.add_dependency(self.nodegroup)
         self.ingress_chart.node.add_dependency(self.helm_values_resource)
         self.helm_values_resource.node.add_dependency(self.env_parameter)
