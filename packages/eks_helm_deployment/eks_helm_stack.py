@@ -55,7 +55,8 @@ class EksHelmStack(Stack):
         # custom resource to get helm values
         self.helm_values_resource = CustomResource(
             self, "HelmValuesResource",
-            service_token=self.helm_values_provider.service_token
+            service_token=self.helm_values_provider.service_token,
+            properties={"Environment": environment}
         )
 
         # EKS cluster
